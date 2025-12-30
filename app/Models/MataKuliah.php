@@ -12,12 +12,12 @@ class MataKuliah extends Model
     protected $table = 'mata_kuliahs'; // Nama tabel di database
     
     protected $fillable = [
-        'name', 'sks', 'day', 'start_time', 'end_time', 'dosen_id', 'claimed_at'
+        'kode_mk', 'nama_mk', 'semester', 'prodi', 'sks'
     ];
 
-    // Relasi: Satu Matkul dimiliki Satu Dosen
-    public function dosen()
+    // Relasi: Satu Matkul bisa punya banyak Krs (multiple slot)
+    public function krs()
     {
-        return $this->belongsTo(User::class, 'dosen_id');
+        return $this->hasMany(Krs::class, 'mata_kuliah_id');
     }
 }   

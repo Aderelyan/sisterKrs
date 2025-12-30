@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\MataKuliah;
+use App\Models\Krs;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -13,17 +14,23 @@ class DosenController extends Controller
     {
         $user = Auth::user();
 
-        // 1. Ambil Kelas Milik Saya (Diurutkan berdasarkan hari)
-        $myClasses = MataKuliah::where('dosen_id', $user->id)
+        // 1. Ambil Kelas Milik Saya (Dari Krs, join MataKuliah)
+        $myClasses = Krs::where('dosen_id', $user->id)
+                        ->with('mataKuliah')
                         ->orderByRaw("FIELD(day, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu')")
                         ->orderBy('start_time')
                         ->get();
 
-        // Hitung Total SKS
-        $totalSks = $myClasses->sum('sks');
+        // Hitung Total SKS dari myClasses
+        $totalSks = $myClasses->sum(function ($krs) {
+            return $krs->mataKuliah->sks ?? 0;
+        });
 
-        // 2. Ambil Semua Kelas Tersedia (Untuk tabel bawah)
-        $allClasses = MataKuliah::orderBy('name')->get();
+        // 2. Ambil Semua Kelas Tersedia (Dari MataKuliah), tambah flag isTaken
+        $allClasses = MataKuliah::orderBy('nama_mk')->get()->map(function ($class) use ($user) {
+            $class->isTaken = Krs::where('mata_kuliah_id', $class->id)->where('dosen_id', $user->id)->exists();
+            return $class;
+        });
 
         return view('dosen_dashboard', compact('myClasses', 'allClasses', 'totalSks'));
     }
@@ -32,6 +39,9 @@ class DosenController extends Controller
     {
         $user = Auth::user();
         $classId = $request->class_id;
+        $day = $request->day;
+        $startTime = $request->start_time;
+        $endTime = $request->end_time;
 
         $targetClass = MataKuliah::find($classId);
 
@@ -39,41 +49,41 @@ class DosenController extends Controller
             return back()->with('error', 'Kelas tidak ditemukan.');
         }
 
-        if ($targetClass->dosen_id != null) {
-            return back()->with('error', 'Kelas sudah diambil.');
-        }
-
-        // Cek bentrok jadwal
-        $conflict = MataKuliah::where('dosen_id', $user->id)
-            ->where('day', $targetClass->day)
-            ->where(function ($query) use ($targetClass) {
-                $query->where('start_time', '<', $targetClass->end_time)
-                      ->where('end_time', '>', $targetClass->start_time);
+        // Cek bentrok jadwal di Krs
+        $conflict = Krs::where('dosen_id', $user->id)
+            ->where('day', $day)
+            ->where(function ($query) use ($startTime, $endTime) {
+                $query->where('start_time', '<', $endTime)
+                      ->where('end_time', '>', $startTime);
             })
             ->first();
 
         if ($conflict) {
-            return back()->with('error', "Jadwal bentrok dengan {$conflict->name}.");
+            return back()->with('error', "Jadwal bentrok dengan {$conflict->mataKuliah->nama_mk}.");
         }
 
-        $targetClass->dosen_id = $user->id;
-        $targetClass->claimed_at = now();
-        $targetClass->save();
+        // Insert ke Krs
+        Krs::create([
+            'mata_kuliah_id' => $classId,
+            'dosen_id' => $user->id,
+            'claimed_at' => now(),
+            'day' => $day,
+            'start_time' => $startTime,
+            'end_time' => $endTime,
+        ]);
 
-        return back()->with('success', "Berhasil ambil {$targetClass->name}.");
+        return back()->with('success', "Berhasil ambil {$targetClass->nama_mk}.");
     }
 
     public function unclaim(Request $request)
     {
         // Fitur melepas kelas (Jaga-jaga kalau salah ambil)
-        $class = MataKuliah::where('id', $request->class_id)
+        $krs = Krs::where('id', $request->krs_id)
                     ->where('dosen_id', Auth::id())
                     ->first();
         
-        if ($class) {
-            $class->dosen_id = null; // Kosongkan lagi
-            $class->claimed_at = null;
-            $class->save();
+        if ($krs) {
+            $krs->delete();
             return back()->with('success', 'Kelas berhasil dilepas.');
         }
 
@@ -91,7 +101,6 @@ class DosenController extends Controller
         $user = \App\Models\User::create([
             'name' => $request->name,
             'nidn' => $request->nidn,
-            'email' => $request->nidn, // Use NIDN as email for login
             'password' => \Illuminate\Support\Facades\Hash::make($request->password),
         ]);
 

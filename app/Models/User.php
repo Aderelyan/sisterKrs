@@ -19,9 +19,8 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
-        'email',
-        'password',
         'nidn',
+        'password',
     ];
 
     /**
@@ -35,15 +34,49 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * Get the name of the unique identifier for the user.
      */
-    protected function casts(): array
+    public function getAuthIdentifierName()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return 'nidn';
     }
-}
+
+    /**
+     * Get the unique identifier for the user.
+     */
+    public function getAuthIdentifier()
+    {
+        return $this->getKey();
+    }
+
+    /**
+     * Get the password for the user.
+     */
+    public function getAuthPassword()
+    {
+        return $this->password;
+    }
+
+    /**
+     * Get the token value for the "remember me" session.
+     */
+    public function getRememberToken()
+    {
+        return $this->remember_token;
+    }
+
+    /**
+     * Set the token value for the "remember me" session.
+     */
+    public function setRememberToken($value)
+    {
+        $this->remember_token = $value;
+    }
+
+    /**
+     * Get the column name for the "remember me" token.
+     */
+    public function getRememberTokenName()
+    {
+        return 'remember_token';
+    }

@@ -166,22 +166,22 @@
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        @foreach($myClasses as $class)
+                                        @foreach($myClasses as $krs)
                                         <tr class="hover:bg-gray-50">
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm font-medium text-gray-900">{{ $class->name }}</div>
+                                                <div class="text-sm font-medium text-gray-900">{{ $krs->mataKuliah->nama_mk }}</div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm text-gray-900">{{ $class->day }}</div>
-                                                <div class="text-xs text-gray-500">{{ $class->start_time }} - {{ $class->end_time }}</div>
+                                                <div class="text-sm text-gray-900">{{ $krs->day }}</div>
+                                                <div class="text-xs text-gray-500">{{ $krs->start_time }} - {{ $krs->end_time }}</div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {{ $class->sks }}
+                                                {{ $krs->mataKuliah->sks }}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                                 <form action="{{ route('dosen.unclaim') }}" method="POST" class="inline">
                                                     @csrf
-                                                    <input type="hidden" name="class_id" value="{{ $class->id }}">
+                                                    <input type="hidden" name="krs_id" value="{{ $krs->id }}">
                                                     <button type="submit" class="bg-red-500 hover:bg-red-600 text-white font-medium py-1 px-3 rounded-lg text-sm transition duration-200" onclick="return confirm('Yakin ingin melepas kelas ini?')">
                                                         Lepas
                                                     </button>
@@ -220,16 +220,15 @@
                                 <tbody class="bg-transparent divide-y divide-gray-200">
                                     @foreach($allClasses as $class)
                                     @php
-                                        $isMine = $class->dosen_id == Auth::id();
-                                        $isTaken = $class->dosen_id != null;
+                                        $isTaken = $class->isTaken;
                                     @endphp
-                                    <tr class="hover:bg-gray-50 {{ $isTaken && !$isMine ? 'opacity-60' : '' }}">
+                                    <tr class="hover:bg-gray-50 {{ $isTaken ? 'opacity-60' : '' }}">
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm font-medium text-gray-900">{{ $class->name }}</div>
+                                            <div class="text-sm font-medium text-gray-900">{{ $class->nama_mk }}</div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900">{{ $class->day }}</div>
-                                            <div class="text-xs text-gray-500">{{ $class->start_time }} - {{ $class->end_time }}</div>
+                                            <div class="text-sm text-gray-900">-</div>
+                                            <div class="text-xs text-gray-500">-</div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {{ $class->sks }}
@@ -239,13 +238,9 @@
                                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                                     Tersedia
                                                 </span>
-                                            @elseif($isMine)
-                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                                    Milik Anda
-                                                </span>
                                             @else
-                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                                    Diambil
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                                    Sudah Diambil
                                                 </span>
                                             @endif
                                         </td>
@@ -254,12 +249,13 @@
                                                 <form action="{{ route('dosen.claim') }}" method="POST" class="inline">
                                                     @csrf
                                                     <input type="hidden" name="class_id" value="{{ $class->id }}">
-                                                    <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 transform hover:scale-105" onclick="this.innerHTML='Mengambil...';">
+                                                    <input type="text" name="day" placeholder="Hari (e.g. Senin)" required class="mr-2 px-2 py-1 text-xs border rounded">
+                                                    <input type="time" name="start_time" required class="mr-2 px-2 py-1 text-xs border rounded">
+                                                    <input type="time" name="end_time" required class="mr-2 px-2 py-1 text-xs border rounded">
+                                                    <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 transform hover:scale-105">
                                                         Ambil Kelas
                                                     </button>
                                                 </form>
-                                            @elseif($isMine)
-                                                <span class="text-gray-500 text-sm">Sudah diambil</span>
                                             @else
                                                 <span class="text-gray-400 text-sm">Tidak tersedia</span>
                                             @endif
