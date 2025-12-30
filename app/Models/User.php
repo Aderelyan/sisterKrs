@@ -80,3 +80,4 @@ class User extends Authenticatable
     {
         return 'remember_token';
     }
+}
