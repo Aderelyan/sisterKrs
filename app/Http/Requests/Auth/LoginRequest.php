@@ -39,16 +39,25 @@ class LoginRequest extends FormRequest
      */
     public function authenticate(): void
     {
+        \Log::info('authenticate() called');
+        
         $this->ensureIsNotRateLimited();
-
-        if (! Auth::attempt(['nidn' => $this->input('nidn'), 'password' => $this->input('password')], $this->boolean('remember'))) {
+        \Log::info('Rate limiting passed');
+        
+        $credentials = [
+            'nidn' => $this->input('nidn'), 
+            'password' => $this->input('password')
+        ];
+        
+        \Log::info('Attempting Auth::attempt with:', ['nidn' => $credentials['nidn']]);
+        
+        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
+            \Log::error('Auth::attempt FAILED for nidn: ' . $credentials['nidn']);
             RateLimiter::hit($this->throttleKey());
-
-            throw ValidationException::withMessages([
-                'nidn' => trans('auth.failed'),
-            ]);
+            throw ValidationException::withMessages(['nidn' => trans('auth.failed')]);
         }
 
+        \Log::info('Auth::attempt SUCCESS for nidn: ' . $credentials['nidn']);
         RateLimiter::clear($this->throttleKey());
     }
 
