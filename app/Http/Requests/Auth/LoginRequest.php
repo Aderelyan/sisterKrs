@@ -11,54 +11,40 @@ use Illuminate\Validation\ValidationException;
 
 class LoginRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\Rule|array|string>
-     */
     public function rules(): array
     {
         return [
-            // UBAH DARI 'email' MENJADI 'nidn'
-            'nidn' => ['required', 'string'], 
+            // KITA UBAH VALIDASI DARI EMAIL KE NIDN
+            'nidn' => ['required', 'string'],
             'password' => ['required', 'string'],
         ];
     }
 
-    /**
-     * Attempt to authenticate the request's credentials.
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
     public function authenticate(): void
     {
         $this->ensureIsNotRateLimited();
 
-        // LOGIKA BARU: Login menggunakan NIDN
+        // LOGIKA LOGIN UTAMA
+        // Kita gunakan only('nidn', 'password')
         if (! Auth::attempt($this->only('nidn', 'password'), $this->boolean('remember'))) {
+            
+            // Jika gagal login, hitung limit (biar ga di-bruteforce)
             RateLimiter::hit($this->throttleKey());
 
+            // Lempar error agar muncul di halaman login
             throw ValidationException::withMessages([
-                'nidn' => trans('auth.failed'), // Pesan error jika salah
+                'nidn' => trans('auth.failed'),
             ]);
         }
 
         RateLimiter::clear($this->throttleKey());
     }
 
-    /**
-     * Ensure the login request is not rate limited.
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
     public function ensureIsNotRateLimited(): void
     {
         if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
@@ -66,7 +52,6 @@ class LoginRequest extends FormRequest
         }
 
         event(new Lockout($this));
-
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
@@ -77,12 +62,9 @@ class LoginRequest extends FormRequest
         ]);
     }
 
-    /**
-     * Get the rate limiting throttle key for the request.
-     */
     public function throttleKey(): string
     {
-        // Ubah throttle key biar nge-track berdasarkan NIDN dan IP
+        // Ubah throttle key jadi berdasarkan NIDN
         return Str::transliterate(Str::lower($this->input('nidn')).'|'.$this->ip());
     }
 }

@@ -10,26 +10,32 @@ use Illuminate\Support\Facades\DB;
 
 class DosenController extends Controller
 {
-    public function index()
+   public function index()
     {
-
         $user = Auth::user();
 
-        // 1. Ambil Kelas Milik Saya (Dari Krs, join MataKuliah)
+        // 1. Ambil Kelas Milik Saya
         $myClasses = Krs::where('dosen_id', $user->id)
                         ->with('mataKuliah')
-                        ->orderByRaw("FIELD(day, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu')")
-                        ->orderBy('start_time')
-                        ->get();
+                        ->get()
+                        ->sortBy(function($krs) {
+                            return $krs->mataKuliah->nama_mk ?? '';
+                        });
 
-        // Hitung Total SKS dari myClasses
         $totalSks = $myClasses->sum(function ($krs) {
             return $krs->mataKuliah->sks ?? 0;
         });
 
-        // 2. Ambil Semua Kelas Tersedia (Dari MataKuliah), tambah flag isTaken
+        // 2. Ambil Semua Kelas & Cek Status
         $allClasses = MataKuliah::orderBy('nama_mk')->get()->map(function ($class) use ($user) {
-            $class->isTaken = Krs::where('mata_kuliah_id', $class->id)->where('dosen_id', $user->id)->exists();
+            // Cek apakah SAYA yang ambil
+            $class->isTakenByMe = Krs::where('mata_kuliah_id', $class->id)
+                                     ->where('dosen_id', $user->id)
+                                     ->exists();
+            
+            // Cek apakah SUDAH DIAMBIL (oleh siapa saja, termasuk saya)
+            $class->isBooked = Krs::where('mata_kuliah_id', $class->id)->exists();
+            
             return $class;
         });
 
@@ -38,45 +44,30 @@ class DosenController extends Controller
 
     public function claim(Request $request)
     {
+        $request->validate([
+            'class_id' => 'required|exists:mata_kuliahs,id',
+        ]);
+
         $user = Auth::user();
         $classId = $request->class_id;
-        $day = $request->day;
-        $startTime = $request->start_time;
-        $endTime = $request->end_time;
 
-        $targetClass = MataKuliah::find($classId);
+        // CEK 1: Apakah kelas ini sudah ada pemiliknya di tabel KRS?
+        $isBooked = Krs::where('mata_kuliah_id', $classId)->exists();
 
-        if (!$targetClass) {
-            return back()->with('error', 'Kelas tidak ditemukan.');
+        if ($isBooked) {
+            // Jika sudah ada pemiliknya, tolak!
+            return back()->with('error', 'Maaf, kelas ini baru saja diambil oleh dosen lain.');
         }
 
-        // Cek bentrok jadwal di Krs
-        $conflict = Krs::where('dosen_id', $user->id)
-            ->where('day', $day)
-            ->where(function ($query) use ($startTime, $endTime) {
-                $query->where('start_time', '<', $endTime)
-                      ->where('end_time', '>', $startTime);
-            })
-            ->first();
-
-        if ($conflict) {
-            return back()->with('error', "Jadwal bentrok dengan {$conflict->mataKuliah->nama_mk}.");
-        }
-
-        // Insert ke Krs
+        // Simpan
         Krs::create([
             'mata_kuliah_id' => $classId,
             'dosen_id' => $user->id,
             'claimed_at' => now(),
-            'day' => $day,
-            'start_time' => $startTime,
-            'end_time' => $endTime,
         ]);
 
-        return back()->with('success', "Berhasil ambil {$targetClass->nama_mk}.");
-    }
-
-    public function unclaim(Request $request)
+        return back()->with('success', 'Berhasil mengambil kelas.');
+    }    public function unclaim(Request $request)
     {
         // Fitur melepas kelas (Jaga-jaga kalau salah ambil)
         $krs = Krs::where('id', $request->krs_id)

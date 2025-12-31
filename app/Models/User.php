@@ -2,32 +2,31 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+// use Illuminate\Contracts\Auth\MustVerifyEmail; // Kita matikan ini karena pakai NIDN
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $fillable = [
         'name',
-        'nidn',
-        'email',
+        'nidn',      // INI YANG PENTING
         'password',
+        'email',     // Biarkan ada untuk kompatibilitas database, tapi tidak wajib diisi
     ];
 
     /**
      * The attributes that should be hidden for serialization.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $hidden = [
         'password',
@@ -35,50 +34,19 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the name of the unique identifier for the user.
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
      */
-    public function getAuthIdentifierName()
+    protected function casts(): array
     {
-        return 'nidn';
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+        ];
     }
 
-    /**
-     * Get the unique identifier for the user.
-     */
-    public function getAuthIdentifier()
-    {
-        return $this->getKey();
-    }
-
-    /**
-     * Get the password for the user.
-     */
-    public function getAuthPassword()
-    {
-        return $this->password;
-    }
-
-    /**
-     * Get the token value for the "remember me" session.
-     */
-    public function getRememberToken()
-    {
-        return $this->remember_token;
-    }
-
-    /**
-     * Set the token value for the "remember me" session.
-     */
-    public function setRememberToken($value)
-    {
-        $this->remember_token = $value;
-    }
-
-    /**
-     * Get the column name for the "remember me" token.
-     */
-    public function getRememberTokenName()
-    {
-        return 'remember_token';
-    }
+    // PENTING: Kita hapus getAuthIdentifierName()
+    // Biarkan Laravel mengidentifikasi user berdasarkan ID (Primary Key) secara internal
+    // Saat LoginRequest mencari user via NIDN, session akan menyimpan ID user tersebut.
 }
