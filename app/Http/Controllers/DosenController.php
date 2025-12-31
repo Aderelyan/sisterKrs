@@ -12,6 +12,7 @@ class DosenController extends Controller
 {
     public function index()
     {
+
         $user = Auth::user();
 
         // 1. Ambil Kelas Milik Saya (Dari Krs, join MataKuliah)
@@ -101,6 +102,7 @@ class DosenController extends Controller
         $user = \App\Models\User::create([
             'name' => $request->name,
             'nidn' => $request->nidn,
+            'email' => $request->nidn . '@dummy.com',
             'password' => \Illuminate\Support\Facades\Hash::make($request->password),
         ]);
 

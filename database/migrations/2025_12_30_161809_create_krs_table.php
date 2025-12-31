@@ -16,9 +16,6 @@ return new class extends Migration
             $table->foreignId('mata_kuliah_id')->constrained('mata_kuliahs')->onDelete('cascade');
             $table->foreignId('dosen_id')->constrained('users')->onDelete('cascade');
             $table->timestamp('claimed_at');
-            $table->string('day'); // Hari slot
-            $table->time('start_time'); // Jam mulai slot
-            $table->time('end_time'); // Jam selesai slot
             $table->timestamps();
         });
     }

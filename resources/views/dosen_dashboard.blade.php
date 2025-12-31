@@ -169,14 +169,14 @@
                                         @foreach($myClasses as $krs)
                                         <tr class="hover:bg-gray-50">
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm font-medium text-gray-900">{{ $krs->mataKuliah->nama_mk }}</div>
+                                                <div class="text-sm font-medium text-gray-900">{{ $krs->mataKuliah ? $krs->mataKuliah->nama_mk : 'Mata Kuliah tidak ditemukan' }}</div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="text-sm text-gray-900">{{ $krs->day }}</div>
                                                 <div class="text-xs text-gray-500">{{ $krs->start_time }} - {{ $krs->end_time }}</div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {{ $krs->mataKuliah->sks }}
+                                                {{ $krs->mataKuliah ? $krs->mataKuliah->sks : 0 }}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                                 <form action="{{ route('dosen.unclaim') }}" method="POST" class="inline">

@@ -22,12 +22,13 @@ class LoginRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, \Illuminate\Contracts\Validation\Rule|array|string>
      */
     public function rules(): array
     {
         return [
-            'nidn' => ['required', 'string'],
+            // UBAH DARI 'email' MENJADI 'nidn'
+            'nidn' => ['required', 'string'], 
             'password' => ['required', 'string'],
         ];
     }
@@ -39,25 +40,17 @@ class LoginRequest extends FormRequest
      */
     public function authenticate(): void
     {
-        \Log::info('authenticate() called');
-        
         $this->ensureIsNotRateLimited();
-        \Log::info('Rate limiting passed');
-        
-        $credentials = [
-            'nidn' => $this->input('nidn'), 
-            'password' => $this->input('password')
-        ];
-        
-        \Log::info('Attempting Auth::attempt with:', ['nidn' => $credentials['nidn']]);
-        
-        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
-            \Log::error('Auth::attempt FAILED for nidn: ' . $credentials['nidn']);
+
+        // LOGIKA BARU: Login menggunakan NIDN
+        if (! Auth::attempt($this->only('nidn', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
-            throw ValidationException::withMessages(['nidn' => trans('auth.failed')]);
+
+            throw ValidationException::withMessages([
+                'nidn' => trans('auth.failed'), // Pesan error jika salah
+            ]);
         }
 
-        \Log::info('Auth::attempt SUCCESS for nidn: ' . $credentials['nidn']);
         RateLimiter::clear($this->throttleKey());
     }
 
@@ -89,6 +82,7 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('nidn')).'|'.$this->ip());
+        // Ubah throttle key biar nge-track berdasarkan NIDN dan IP
+        return Str::transliterate(Str::lower($this->input('nidn')).'|'.$this->ip());
     }
 }

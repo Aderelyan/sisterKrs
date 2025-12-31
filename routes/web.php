@@ -16,7 +16,7 @@ Route::post('/register-dosen', [DosenController::class, 'register'])->name('regi
 
 // Route Dashboard (Otomatis diarahkan ke DosenController)
 Route::get('/dashboard', [DosenController::class, 'index'])
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth'])
     ->name('dashboard');
 
 // Route untuk Proses Claim/Unclaim (Harus Login)
